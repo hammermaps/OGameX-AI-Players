@@ -125,7 +125,11 @@ abstract class GameMission
     public function isMissionPossible(PlanetService $planet, Coordinate $targetCoordinate, PlanetType $targetType, UnitCollection $units): MissionPossibleStatus
     {
         // Cannot send missions while in vacation mode
-        if ($planet->getPlayer()->isInVacationMode()) {
+        $player = $planet->getPlayer();
+        if ($player === null) {
+            return new MissionPossibleStatus(false);
+        }
+        if ($player->isInVacationMode()) {
             return new MissionPossibleStatus(false, __('You cannot send missions while in vacation mode!'));
         }
 
@@ -223,13 +227,17 @@ abstract class GameMission
             throw new Exception('Not enough units on the planet to send the fleet. Units required: ' . $unitNames);
         }
 
-        if ($planet->getPlayer()->getFleetSlotsInUse() >= $planet->getPlayer()->getFleetSlotsMax()) {
+        $player = $planet->getPlayer();
+        if ($player === null) {
+            throw new Exception('Mission origin planet has no owner.');
+        }
+        if ($player->getFleetSlotsInUse() >= $player->getFleetSlotsMax()) {
             throw new Exception('Maximum number of fleets reached.');
         }
 
         $missionPossibleStatus = $this->isMissionPossible($planet, $targetCoordinate, $targetType, $units);
         if (!$missionPossibleStatus->possible) {
-            throw new Exception($missionPossibleStatus->reason ?? __('This mission is not possible.'));
+            throw new Exception($missionPossibleStatus->error !== '' ? $missionPossibleStatus->error : __('This mission is not possible.'));
         }
     }
 
@@ -261,7 +269,7 @@ abstract class GameMission
      * @return FleetMission The created fleet mission.
      * @throws Exception
      */
-    public function start(PlanetService $planet, Coordinate $targetCoordinate, PlanetType $targetType, UnitCollection $units, Resources $resources, float $speedPercent, int $holdingHours = 0, int $parentId = 0): FleetMission
+    public function start(PlanetService $planet, Coordinate $targetCoordinate, PlanetType $targetType, UnitCollection $units, Resources $resources, float $speedPercent, int $holdingHours = 0, int $parentId = 0, bool $retreatAfterDefenderRetreat = false): FleetMission
     {
         $consumption = $this->fleetMissionService->calculateConsumption($planet, $units, $targetCoordinate, $holdingHours, $speedPercent);
         $consumption_resources = new Resources(0, 0, $consumption, 0);
@@ -271,8 +279,12 @@ abstract class GameMission
 
         $this->startMissionSanityChecks($planet, $targetCoordinate, $targetType, $units, $deduct_resources);
 
-        $totalCargoCapacity = $units->getTotalCargoCapacity($planet->getPlayer());
-        $totalFuelCapacity = $units->getTotalFuelCapacity($planet->getPlayer());
+        $player = $planet->getPlayer();
+        if ($player === null) {
+            throw new Exception('Mission origin planet has no owner.');
+        }
+        $totalCargoCapacity = $units->getTotalCargoCapacity($player);
+        $totalFuelCapacity = $units->getTotalFuelCapacity($player);
 
         // Check if the player has sufficient deuterium storage capacity for the fleet.
         if ($totalFuelCapacity < $consumption) {
@@ -298,10 +310,13 @@ abstract class GameMission
         // mission linked to a previous mission.
         if (!empty($parentId)) {
             $parentMission = $this->fleetMissionService->getFleetMissionById($parentId);
+            if ($parentMission === null) {
+                throw new Exception('Parent mission not found.');
+            }
             $mission->parent_id = $parentMission->id;
         }
 
-        $mission->user_id = $planet->getPlayer()->getId();
+        $mission->user_id = $player->getId();
 
         $mission->type_from = $planet->getPlanetType()->value;
         $mission->planet_id_from = $planet->getPlanetId();
@@ -359,6 +374,7 @@ abstract class GameMission
         $mission->metal = $resources->metal->getRounded();
         $mission->crystal = $resources->crystal->getRounded();
         $mission->deuterium = $resources->deuterium->getRounded();
+        $mission->retreat_after_defender_retreat = $retreatAfterDefenderRetreat;
 
         // Deduct mission resources from the planet.
         $this->deductMissionResources($planet, $deduct_resources, $units);
@@ -415,7 +431,13 @@ abstract class GameMission
      */
     protected function checkTargetVacationMode(PlanetService|null $targetPlanet): MissionPossibleStatus|null
     {
-        if ($targetPlanet !== null && $targetPlanet->getPlayer()->isInVacationMode()) {
+        // Destroyed planets are Deep space / not player-controlled; vacation of the former
+        // owner must not block attack, espionage, or transport (classic OGame).
+        if ($targetPlanet !== null && $targetPlanet->isDestroyed()) {
+            return null;
+        }
+
+        if ($targetPlanet !== null && $targetPlanet->getPlayer()?->isInVacationMode()) {
             return new MissionPossibleStatus(false, __('This player is in vacation mode!'));
         }
         return null;
@@ -430,7 +452,7 @@ abstract class GameMission
      */
     protected function checkAdminProtection(PlanetService|null $targetPlanet, string $errorMessage): MissionPossibleStatus|null
     {
-        if ($targetPlanet !== null && $targetPlanet->getPlayer()->getUsername(false) === 'Legor') {
+        if ($targetPlanet !== null && $targetPlanet->getPlayer()?->getUsername(false) === 'Legor') {
             return new MissionPossibleStatus(false, $errorMessage);
         }
         return null;
@@ -445,9 +467,37 @@ abstract class GameMission
      */
     protected function checkOwnPlanet(PlanetService $planet, PlanetService|null $targetPlanet): MissionPossibleStatus|null
     {
-        if ($targetPlanet !== null && $planet->getPlayer()->equals($targetPlanet->getPlayer())) {
+        if ($targetPlanet !== null && $planet->getPlayer()?->equals($targetPlanet->getPlayer())) {
             return new MissionPossibleStatus(false);
         }
+        return null;
+    }
+
+    /**
+     * Helper method to check destroyed-planet / destroyed-moon targeting rules.
+     *
+     * Destroyed moons cannot be targeted at all. Destroyed planets are only allowed
+     * when $allowDestroyedPlanet is true (attack / espionage / transport / missile).
+     *
+     * @param PlanetService|null $targetPlanet
+     * @param PlanetType $targetType
+     * @param bool $allowDestroyedPlanet
+     * @return MissionPossibleStatus|null
+     */
+    protected function checkDestroyedTarget(PlanetService|null $targetPlanet, PlanetType $targetType, bool $allowDestroyedPlanet = false): MissionPossibleStatus|null
+    {
+        if ($targetPlanet === null || !$targetPlanet->isDestroyed()) {
+            return null;
+        }
+
+        if ($targetType === PlanetType::Moon) {
+            return new MissionPossibleStatus(false, __('Fleets cannot target a destroyed moon.'));
+        }
+
+        if (!$allowDestroyedPlanet) {
+            return new MissionPossibleStatus(false);
+        }
+
         return null;
     }
 
@@ -514,6 +564,9 @@ abstract class GameMission
         if ($mission->type_from === PlanetType::Planet->value || $mission->type_from === PlanetType::Moon->value) {
             if ($parentMission->planet_id_to === null) {
                 // Attempt to load it from the target coordinates.
+                if ($parentMission->galaxy_to === null || $parentMission->system_to === null || $parentMission->position_to === null) {
+                    throw new Exception('Return mission parent has no target coordinate.');
+                }
                 $targetPlanet = $this->planetServiceFactory->makeForCoordinate(new Coordinate($parentMission->galaxy_to, $parentMission->system_to, $parentMission->position_to));
                 $mission->planet_id_from = $targetPlanet?->getPlanetId();
             } else {

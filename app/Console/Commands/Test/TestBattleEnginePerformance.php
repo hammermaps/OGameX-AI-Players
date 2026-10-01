@@ -2,9 +2,9 @@
 
 namespace OGame\Console\Commands\Test;
 
+use Exception;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Exception;
 use Illuminate\Support\Facades\Date;
 use InvalidArgumentException;
 use OGame\GameMissions\BattleEngine\BattleEngine;
@@ -46,7 +46,8 @@ class TestBattleEnginePerformance extends TestCommand
     public function handle(): int
     {
         // Check for fleet option
-        if (!$this->option('fleet') || !$this->parseFleets($this->option('fleet'))) {
+        $fleetOption = $this->option('fleet');
+        if (!is_string($fleetOption) || !$this->parseFleets($fleetOption)) {
             $this->error('Specify valid --fleet option in JSON format like this: --fleet=\'{"attacker": {"light_fighter": 1667}, "defender": {"rocket_launcher": 1667}}\'');
             return 1;
         }
@@ -54,7 +55,11 @@ class TestBattleEnginePerformance extends TestCommand
         // Set up the test environment
         parent::setup();
 
-        $fleets = $this->parseFleets($this->option('fleet'));
+        $fleets = $this->parseFleets($fleetOption);
+        if ($fleets === null) {
+            $this->error('Invalid fleet option provided.');
+            return 1;
+        }
         $engine = $this->argument('engine');
 
         if (!in_array($engine, ['php', 'rust'])) {
@@ -82,6 +87,12 @@ class TestBattleEnginePerformance extends TestCommand
         $this->playerService->setResearchLevel('weapon_technology', 10);
         $this->playerService->setResearchLevel('shielding_technology', 10);
         $this->playerService->setResearchLevel('armor_technology', 10);
+
+        // simulateBattle() evaluates tactical retreat and may deduct deuterium / strip
+        // defending ships. Disable flee so the benchmark measures combat, not retreat.
+        $benchmarkUser = $this->playerService->getUser();
+        $benchmarkUser->tactical_retreat_ratio = 0;
+        $benchmarkUser->save();
 
         // Set up defender planet with provided units
         foreach ($fleets['defender']->units as $unit) {

@@ -31,7 +31,7 @@ class MissilesDoNotParticipateInCombatTest extends FleetDispatchTestCase
     protected function basicSetup(): void
     {
         $this->planetAddUnit('light_fighter', 10);
-        $this->playerSetResearchLevel('computer_technology', object_level: 1);
+        $this->playerSetResearchLevel('computer_technology', objectLevel: 1);
 
         $settingsService = resolve(SettingsService::class);
         $settingsService->set('economy_speed', 8);
@@ -88,7 +88,6 @@ class MissilesDoNotParticipateInCombatTest extends FleetDispatchTestCase
         );
 
         $this->travel($fleetMissionDuration + 1)->seconds();
-        $this->reloadApplication();
         $this->playerSetAllMessagesRead();
 
         // Trigger the battle
@@ -98,6 +97,9 @@ class MissilesDoNotParticipateInCombatTest extends FleetDispatchTestCase
         // Reload the defender planet
         $planetServiceFactory = resolve(PlanetServiceFactory::class);
         $foreignPlanetReloaded = $planetServiceFactory->make($foreignPlanet->getPlanetId());
+        if ($foreignPlanetReloaded === null) {
+            $this->fail('Foreign planet not found.');
+        }
 
         // Key assertions: missiles should NOT have participated in combat
         // Therefore they should still be at their original counts
@@ -123,7 +125,11 @@ class MissilesDoNotParticipateInCombatTest extends FleetDispatchTestCase
         );
 
         // Get the battle report
-        $messageAttacker = Message::where('user_id', $this->planetService->getPlayer()->getId())
+        $player = $this->planetService->getPlayer();
+        if ($player === null) {
+            $this->fail('Player not found.');
+        }
+        $messageAttacker = Message::where('user_id', $player->getId())
             ->where('key', 'battle_report')
             ->orderByDesc('id')
             ->first();
@@ -186,7 +192,6 @@ class MissilesDoNotParticipateInCombatTest extends FleetDispatchTestCase
         );
 
         $this->travel($fleetMissionDuration + 1)->seconds();
-        $this->reloadApplication();
 
         // Trigger the battle
         $response = $this->get('/overview');
@@ -195,6 +200,9 @@ class MissilesDoNotParticipateInCombatTest extends FleetDispatchTestCase
         // Reload the defender planet
         $planetServiceFactory = resolve(PlanetServiceFactory::class);
         $foreignPlanetReloaded = $planetServiceFactory->make($foreignPlanet->getPlanetId());
+        if ($foreignPlanetReloaded === null) {
+            $this->fail('Foreign planet not found.');
+        }
 
         // Verify missiles remain at original count
         $this->assertEquals(
@@ -209,7 +217,11 @@ class MissilesDoNotParticipateInCombatTest extends FleetDispatchTestCase
         );
 
         // Get the battle report
-        $messageAttacker = Message::where('user_id', $this->planetService->getPlayer()->getId())
+        $player = $this->planetService->getPlayer();
+        if ($player === null) {
+            $this->fail('Player not found.');
+        }
+        $messageAttacker = Message::where('user_id', $player->getId())
             ->where('key', 'battle_report')
             ->orderByDesc('id')
             ->first();

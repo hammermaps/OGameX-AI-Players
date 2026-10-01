@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use DB;
 use Exception;
 use Illuminate\Support\Facades\Date;
 use OGame\Factories\PlanetServiceFactory;
@@ -17,89 +16,13 @@ use OGame\Services\AllianceService;
 use OGame\Services\BuddyService;
 use OGame\Services\FleetMissionService;
 use OGame\Services\ObjectService;
-use Tests\AccountTestCase;
+use Tests\IsolatedAccountTestCase;
 
 /**
  * Test that Alliance Depot supply rocket functionality works as expected.
  */
-class AllianceDepotSupplyRocketTest extends AccountTestCase
+class AllianceDepotSupplyRocketTest extends IsolatedAccountTestCase
 {
-    /** @var array<int> */
-    private array $createdPlanetIds = [];
-
-    /** @var array<int> */
-    private array $createdAllianceIds = [];
-
-    /**
-     * Track created planets for cleanup.
-     */
-    private function trackPlanet(Planet $planet): void
-    {
-        $this->createdPlanetIds[] = $planet->id;
-    }
-
-    /**
-     * Clean up test data after each test to prevent test isolation issues.
-     */
-    protected function tearDown(): void
-    {
-        // Remove alliance data created during this test
-        if (!empty($this->createdAllianceIds)) {
-            // Delete alliance members
-            DB::table('alliance_members')
-                ->whereIn('alliance_id', $this->createdAllianceIds)
-                ->delete();
-
-            // Delete alliance applications
-            DB::table('alliance_applications')
-                ->whereIn('alliance_id', $this->createdAllianceIds)
-                ->delete();
-
-            // Delete alliances
-            DB::table('alliances')
-                ->whereIn('id', $this->createdAllianceIds)
-                ->delete();
-
-            // Reset alliance_id for current user
-            if ($this->currentUserId !== 0) {
-                DB::table('users')
-                    ->where('id', $this->currentUserId)
-                    ->update([
-                        'alliance_id' => null,
-                        'alliance_left_at' => null,
-                    ]);
-            }
-        }
-
-        // Remove planets created during this test
-        if (!empty($this->createdPlanetIds)) {
-            // Delete fleet missions to/from these planets first (foreign key constraints)
-            // Delete child missions first (return missions with parent_id)
-            FleetMission::whereNotNull('parent_id')
-                ->where(function ($query) {
-                    $query->whereIn('planet_id_from', $this->createdPlanetIds)
-                        ->orWhereIn('planet_id_to', $this->createdPlanetIds);
-                })
-                ->delete();
-
-            // Then delete parent missions
-            FleetMission::whereNull('parent_id')
-                ->where(function ($query) {
-                    $query->whereIn('planet_id_from', $this->createdPlanetIds)
-                        ->orWhereIn('planet_id_to', $this->createdPlanetIds);
-                })
-                ->delete();
-
-            // Now we can delete the planets
-            Planet::whereIn('id', $this->createdPlanetIds)->delete();
-        }
-
-        // Remove all buddy relationships to prevent interference with other tests
-        DB::table('buddy_requests')->truncate();
-
-        parent::tearDown();
-    }
-
     /**
      * Test that supply rocket successfully extends hold time.
      *
@@ -120,8 +43,10 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
             'system'  => $buddyCoordinate->system,
             'planet'  => $buddyCoordinate->position,
         ]);
-        $this->trackPlanet($buddyPlanet);
         $buddyPlanetService = $planetServiceFactory->make($buddyPlanet->id, true);
+        if ($buddyPlanetService === null) {
+            $this->fail('Buddy planet service is null.');
+        }
 
         // Add buddy relationship first
         $buddyService = resolve(BuddyService::class);
@@ -177,6 +102,9 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
 
         // Get deuterium before (from buddy's planet now, reload to get current values)
         $buddyPlanetService = $planetServiceFactory->make($buddyPlanetService->getPlanetId(), true);
+        if ($buddyPlanetService === null) {
+            $this->fail('Buddy planet service is null.');
+        }
         $deuteriumBefore = $buddyPlanetService->deuterium()->get();
 
         // Buddy sends supply rocket to extend hold time by 2 hours
@@ -191,6 +119,9 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
 
         // Assert deuterium was deducted from buddy's planet (10 light fighters * 2 deut/hour * 2 hours = 40)
         $buddyPlanetService = $planetServiceFactory->make($buddyPlanetService->getPlanetId(), true);
+        if ($buddyPlanetService === null) {
+            $this->fail('Buddy planet service is null.');
+        }
         $deuteriumAfter = $buddyPlanetService->deuterium()->get();
         $this->assertEquals(40, $deuteriumBefore - $deuteriumAfter, 'Should deduct 40 deuterium from buddy planet');
 
@@ -220,8 +151,10 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
             'system'  => $buddyCoordinate->system,
             'planet'  => $buddyCoordinate->position,
         ]);
-        $this->trackPlanet($buddyPlanet);
         $buddyPlanetService = $planetServiceFactory->make($buddyPlanet->id, true);
+        if ($buddyPlanetService === null) {
+            $this->fail('Buddy planet service is null.');
+        }
 
         // Add buddy relationship
         $buddyService = resolve(BuddyService::class);
@@ -273,6 +206,8 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
             ->whereNull('parent_id')
             ->first();
 
+        $this->assertNotNull($outboundMission, 'Outbound mission should exist');
+
         // Try to send supply rocket (5 cruisers * 30 deut/hour * 1 hour = 150 deuterium needed)
         $response = $this->post('/ajax/alliance-depot/send-supply-rocket', [
             'fleet_mission_id' => $outboundMission->id,
@@ -306,8 +241,10 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
             'system'  => $buddyCoordinate->system,
             'planet'  => $buddyCoordinate->position,
         ]);
-        $this->trackPlanet($buddyPlanet);
         $buddyPlanetService = $planetServiceFactory->make($buddyPlanet->id, true);
+        if ($buddyPlanetService === null) {
+            $this->fail('Buddy planet service is null.');
+        }
 
         // Add buddy relationship
         $buddyService = resolve(BuddyService::class);
@@ -360,6 +297,8 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
             ->where('planet_id_to', $buddyPlanetService->getPlanetId())
             ->whereNull('parent_id')
             ->first();
+
+        $this->assertNotNull($outboundMission, 'Outbound mission should exist');
 
         // Try to send supply rocket
         $response = $this->post('/ajax/alliance-depot/send-supply-rocket', [
@@ -425,8 +364,10 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
             'system' => 150,
             'planet' => $buddyPosition,
         ]);
-        $this->trackPlanet($buddyPlanet);
         $buddyPlanetService = $planetServiceFactory->make($buddyPlanet->id, true);
+        if ($buddyPlanetService === null) {
+            $this->fail('Buddy planet service is null.');
+        }
 
         $buddyService = resolve(BuddyService::class);
         $request = $buddyService->sendRequest($this->currentUserId, $buddyUser->id);
@@ -490,7 +431,11 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
         $this->assertEquals(14400 + 7200, $outboundMission->time_holding, 'Hold time should be extended to 6 hours');
 
         // Switch back to original user (fleet owner)
-        $this->be(User::find($this->currentUserId));
+        $currentUser = User::find($this->currentUserId);
+        if ($currentUser === null) {
+            $this->fail('Current user not found.');
+        }
+        $this->be($currentUser);
 
         // Try to recall the fleet (should succeed)
         $response = $this->post('/ajax/fleet/dispatch/recall-fleet', [
@@ -517,7 +462,6 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
         // Create alliance and add both players to it
         $allianceService = app(AllianceService::class);
         $alliance = $allianceService->createAlliance($this->currentUserId, 'TAG', 'Test Alliance');
-        $this->createdAllianceIds[] = $alliance->id;
 
         // Create alliance member and their planet with Alliance Depot
         $allianceMemberUser = User::factory()->create();
@@ -531,11 +475,12 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
             'system'  => $allianceMemberCoordinate->system,
             'planet'  => $allianceMemberCoordinate->position,
         ]);
-        $this->trackPlanet($allianceMemberPlanet);
         $allianceMemberPlanetService = $planetServiceFactory->make($allianceMemberPlanet->id, true);
+        if ($allianceMemberPlanetService === null) {
+            $this->fail('Alliance member planet service is null.');
+        }
 
         // Add alliance member to alliance (bypass cooldown for testing)
-        /** @phpstan-ignore assign.propertyType */
         $allianceMemberUser->alliance_id = $alliance->id;
         $allianceMemberUser->alliance_left_at = null;
         $allianceMemberUser->save();
@@ -596,6 +541,9 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
 
         // Get deuterium before (from alliance member's planet now, reload to get current values)
         $allianceMemberPlanetService = $planetServiceFactory->make($allianceMemberPlanetService->getPlanetId(), true);
+        if ($allianceMemberPlanetService === null) {
+            $this->fail('Alliance member planet service is null.');
+        }
         $deuteriumBefore = $allianceMemberPlanetService->deuterium()->get();
 
         // Alliance member sends supply rocket to extend hold time by 2 hours
@@ -610,6 +558,9 @@ class AllianceDepotSupplyRocketTest extends AccountTestCase
 
         // Assert deuterium was deducted from alliance member's planet (10 light fighters * 2 deut/hour * 2 hours = 40)
         $allianceMemberPlanetService = $planetServiceFactory->make($allianceMemberPlanetService->getPlanetId(), true);
+        if ($allianceMemberPlanetService === null) {
+            $this->fail('Alliance member planet service is null.');
+        }
         $deuteriumAfter = $allianceMemberPlanetService->deuterium()->get();
         $this->assertEquals(40, $deuteriumBefore - $deuteriumAfter, 'Should deduct 40 deuterium from alliance member planet');
 

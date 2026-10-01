@@ -8,12 +8,12 @@ use OGame\Models\ResearchQueue;
 use OGame\Models\Resources;
 use OGame\Services\ObjectService;
 use OGame\Services\SettingsService;
-use Tests\AccountTestCase;
+use Tests\IsolatedAccountTestCase;
 
 /**
  * Test that the research queue works as expected.
  */
-class ResearchQueueTest extends AccountTestCase
+class ResearchQueueTest extends IsolatedAccountTestCase
 {
     /**
      * Set up common test components.
@@ -208,23 +208,32 @@ class ResearchQueueTest extends AccountTestCase
         // Assert two planets combined research lab level when second planet doesn't meet requirements.
         $this->playerSetResearchLevel('intergalactic_research_network', 2);
         $this->playerSetResearchLevel('energy_technology', 3);
-        $this->secondPlanetService->setObjectLevel(31, 5); // Research Lab
+        $secondPlanetService = $this->secondPlanetService;
+        if ($secondPlanetService === null) {
+            $this->fail('Second planet service not initialized.');
+        }
+        $secondPlanetService->setObjectLevel(31, 5); // Research Lab
         $this->assertSame(8, $this->planetService->getResearchNetworkLabLevel('shielding_technology'));
 
         // Assert two planets combined research lab level.
-        $this->secondPlanetService->setObjectLevel(31, 10); // Research Lab
+        $secondPlanetService->setObjectLevel(31, 10); // Research Lab
         $this->assertSame(18, $this->planetService->getResearchNetworkLabLevel('shielding_technology'));
 
         // Assert three planets combined research lab level.
-        $thirdPlanetService = $this->planetService->getPlayer()->planets->all()[2];
+        $player = $this->planetService->getPlayer();
+        if ($player === null) {
+            $this->fail('Player not found.');
+        }
+        $thirdPlanetService = $player->planets->all()[2];
         $thirdPlanetService->setObjectLevel(31, 6); // Research Lab
         $this->assertSame(24, $this->planetService->getResearchNetworkLabLevel('shielding_technology'));
 
         // Assert four planets combined research lab level. Forth planet is not counted in as
         // Intergalactic Research Network technology level 2 limits combined planet count to 3.
-        $forthPlanetService = $this->planetService->getPlayer()->planets->all()[3];
+        $forthPlanetService = $player->planets->all()[3];
         $forthPlanetService->setObjectLevel(31, 6); // Research Lab
-        $this->assertSame(24, $this->planetService->getResearchNetworkLabLevel('shielding_technology'));
+        $research_network_lab_level = $this->planetService->getResearchNetworkLabLevel('shielding_technology');
+        $this->assertSame(24, $research_network_lab_level);
 
         // Assert the combined research lab level of the four planets when two of the planets do not meet the requirements.
         $thirdPlanetService->setObjectLevel(31, 1); // Research Lab
@@ -238,6 +247,11 @@ class ResearchQueueTest extends AccountTestCase
      */
     public function testResearchLabRequirement(): void
     {
+        // This test expects research to finish within 2 minutes; set research_speed explicitly
+        // so it's self-contained and doesn't depend on settings left behind by other tests.
+        $settingsService = resolve(SettingsService::class);
+        $settingsService->set('research_speed', 2);
+
         // Add required resources for research to planet
         $this->planetAddResources(new Resources(5000, 5000, 5000, 0));
 

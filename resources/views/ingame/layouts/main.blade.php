@@ -14,7 +14,7 @@
      ===========================================
 
      Powered by OGameX - Explore the universe! Conquer your enemies!
-     GitHub: https://github.com/hammermaps/OGameX-Test
+     GitHub: https://github.com/lanedirt/OGameX
      Version: {{ \OGame\Facades\GitInfoUtil::getAppVersionBranchCommit() }}
 
     This application is released under the MIT License. For more details, visit the GitHub repository.
@@ -47,9 +47,7 @@
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
-    <link rel="stylesheet" href="{{ mix('css/ingame.css') }}">
-    <script src="{{ mix('js/ingame.min.js') }}"></script>
-    @stack('head')
+    @vite(['resources/css/ingame.css', 'resources/js/ingame.js'])
 
     <script type="text/javascript">
         // Define timerHandler globally to prevent simpleCountdown errors
@@ -454,10 +452,10 @@
                                     $shipTooltipContent .= $shipName . ': ' . $quantity . '<br/>';
                                 }
                             } else {
-                                $shipTooltipContent .= 'No ships in wreck field';
+                                $shipTooltipContent .= __('t_ingame.layout.no_ships_in_wreck');
                             }
                         } else {
-                            $shipTooltipContent .= 'No wreck field available';
+                            $shipTooltipContent .= __('t_ingame.layout.no_wreck_available');
                         }
                     @endphp
                     @php
@@ -877,7 +875,7 @@
                 var userData = {
                     "id": "108130"
                 };
-                var missleAttackLink = "{{ route('overview.index') }}#TODO_page=missileattacklayer&width=669&height=250";
+                var missleAttackLink = "{{ route('galaxy.missile-attack.overlay') }}?width=669&height=250";
                 var changeNickLink = "{{ route('changenick.overlay') }}";
                 var showOutlawWarning = true;
                 var miniFleetLink = "{{ route('fleet.dispatch.sendminifleet') }}";
@@ -1465,7 +1463,7 @@ However, the Space Dock's engineers think that some of the remains can be salvag
 
                 function openPlanetRenameGiveupBox() {
                     openOverlay("{{ route('planetabandon.overlay') }}", {
-                        title: "Abandon\/Rename {{ $currentPlanet->getPlanetName() }}",
+                        title: "{{ __('t_ingame.overview.abandon_rename_modal', ['planet_name' => $currentPlanet->getPlanetName()]) }}",
                         'class': "planetRenameOverlay"
                     });
                 }
@@ -1840,7 +1838,7 @@ However, the Space Dock's engineers think that some of the remains can be salvag
 
                                     @if ($wreckField && in_array($wreckField->status, ['active', 'blocked']) && !$planet->isMoon())
                                         @php
-                                            $hasSpaceDock = $currentPlayer->planets->current()->getObjectLevel('space_dock') > 0;
+                                            $hasSpaceDock = $planet->getObjectLevel('space_dock') > 0;
                                             $isOwner = $wreckField->owner_player_id === $currentPlayer->getId();
                                         @endphp
                                         @if ($isOwner && $hasSpaceDock)
@@ -1903,9 +1901,10 @@ However, the Space Dock's engineers think that some of the remains can be salvag
             <a href="http://wiki.ogame.org/" target="_blank">{{ __('t_ingame.layout.help') }}</a>|
             @php $localeActive = $locale ?? app()->getLocale(); @endphp
             <a href="{{ route('language.switch', ['lang' => 'en']) }}" @if($localeActive === 'en') class="bold" @endif>EN</a>|
-            <a href="{{ route('language.switch', ['lang' => 'de']) }}" @if($localeActive === 'de') class="bold" @endif>DE</a>|
             <a href="{{ route('language.switch', ['lang' => 'it']) }}" @if($localeActive === 'it') class="bold" @endif>IT</a>|
             <a href="{{ route('language.switch', ['lang' => 'nl']) }}" @if($localeActive === 'nl') class="bold" @endif>NL</a>|
+            <a href="{{ route('language.switch', ['lang' => 'fr']) }}" @if($localeActive === 'fr') class="bold" @endif>FR</a>|
+            <a href="{{ route('language.switch', ['lang' => 'zh-TW']) }}" @if($localeActive === 'zh-TW') class="bold" @endif>繁體中文</a>|
             <a href="#">{{ __('t_ingame.layout.board') }}</a>|
             <a class="overlay" href="{{ route('rules.ajax') }}"
                data-overlay-title="{{ __('t_ingame.layout.rules') }}">{{ __('t_ingame.layout.rules') }}</a>|
@@ -2022,6 +2021,5 @@ However, the Space Dock's engineers think that some of the remains can be salvag
         'colorPicker'        => ['ok' => __('t_ingame.messages.bbcode_ok'), 'cancel' => __('t_ingame.messages.bbcode_cancel'), 'rgbR' => 'R', 'rgbG' => 'G', 'rgbB' => 'B'],
         'backgroundImagePicker' => ['ok' => __('t_ingame.messages.bbcode_ok'), 'repeatX' => __('t_ingame.messages.bbcode_repeat_x'), 'repeatY' => __('t_ingame.messages.bbcode_repeat_y')],
     ]) !!};</script>
-    @stack('scripts')
 </body>
 </html>

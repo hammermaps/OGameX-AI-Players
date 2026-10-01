@@ -203,6 +203,10 @@ class DeveloperShortcutsController extends OGameController
             return redirect()->back()->with('error', 'Invalid action specified');
         }
 
+        if ($planet === null) {
+            return redirect()->back()->with('error', 'No planet exists at ' . $coordinate->asString());
+        }
+
         // Parse each resource value, handling k/m/b suffixes and negative values
         $metal = AppUtil::parseResourceValue($request->input('metal', 0));
         $crystal = AppUtil::parseResourceValue($request->input('crystal', 0));
@@ -268,7 +272,7 @@ class DeveloperShortcutsController extends OGameController
                 }
 
                 // Delete the moon.
-                $moon->abandonPlanet();
+                $moon->permanentlyDeletePlanet();
                 return redirect()->back()->with('success', 'Moon deleted successfully at ' . $coordinate->asString());
             }
 
@@ -281,7 +285,7 @@ class DeveloperShortcutsController extends OGameController
                 }
 
                 // Delete the planet.
-                $planet->abandonPlanet();
+                $planet->permanentlyDeletePlanet();
                 return redirect()->back()->with('success', 'Planet deleted successfully at ' . $coordinate->asString());
             }
 
@@ -397,7 +401,12 @@ class DeveloperShortcutsController extends OGameController
             return redirect()->back()->with('error', 'No planet exists at ' . $coordinate->asString());
         }
 
-        $user = $planet->getPlayer()->getUser();
+        $planetPlayer = $planet->getPlayer();
+        if ($planetPlayer === null) {
+            return redirect()->back()->with('error', 'No player found at ' . $coordinate->asString());
+        }
+
+        $user = $planetPlayer->getUser();
         $amount = (int)AppUtil::parseResourceValue($request->input('dark_matter', 0));
         if ($amount == 0) {
             return redirect()->back()->with('error', 'Dark matter amount cannot be zero');
@@ -517,13 +526,17 @@ class DeveloperShortcutsController extends OGameController
         ]);
 
         $currentUser = $request->user();
+        if ($currentUser === null) {
+            return redirect()->back()->with('error', __('User not found.'));
+        }
+
         $targetUser = User::where('username', $validated['username'])->first();
 
         if (!$targetUser) {
             return redirect()->back()->with('error', __('User not found.'));
         }
 
-        if ($currentUser && $currentUser->id === $targetUser->id) {
+        if ($currentUser->id === $targetUser->id) {
             return redirect()->back()->with('error', __('You cannot impersonate yourself.'));
         }
 
