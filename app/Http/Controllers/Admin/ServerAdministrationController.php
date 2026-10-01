@@ -137,7 +137,7 @@ class ServerAdministrationController extends OGameController
             ->sortByDesc(fn ($entry) => count($entry['signals']))
             ->values();
 
-        $botSuspects = $allSuspects->reject(fn ($s) => in_array($s['user']->id, $dismissedUserIds, true))->values();
+        $botSuspects = $allSuspects->reject(fn ($s) => in_array($s['user']?->id, $dismissedUserIds, true))->values();
         $stuckMissionsSettings = $this->stuckMissionsSettings();
         $stuckMissions = $this->getStuckFleetMissions($stuckMissionsSettings['min_overdue_hours']);
         $attackBlockUntil = (int) $settingsService->get('attack_block_until', 0);
@@ -151,7 +151,7 @@ class ServerAdministrationController extends OGameController
             'stuckMissionsSettings' => $stuckMissionsSettings,
             'detectionSettings'     => $settings,
             'dismissedIpCount'      => count($dismissedIps),
-            'dismissedSuspectCount' => $allSuspects->filter(fn ($s) => in_array($s['user']->id, $dismissedUserIds, true))->count(),
+            'dismissedSuspectCount' => $allSuspects->filter(fn ($s) => in_array($s['user']?->id, $dismissedUserIds, true))->count(),
             'attackBlockUntil'      => $attackBlockUntil,
             'attackBlockActive'     => $attackBlockUntil > time(),
         ]);
@@ -720,6 +720,15 @@ class ServerAdministrationController extends OGameController
                 'canceled'   => true,
                 'canceled_at' => now(),
             ]);
+
+            // Lift the 48h minimum-vacation restriction that was imposed by the ban
+            // so the player can leave vacation mode immediately after being unbanned.
+            // The vacation_mode flag itself is left ON — the player chooses when to
+            // disable it; we only release the time-lock that the ban introduced.
+            if ($user->vacation_mode && $user->vacation_mode_until !== null && now()->lessThan($user->vacation_mode_until)) {
+                $user->vacation_mode_until = now();
+                $user->save();
+            }
         }
 
         return redirect()->route('admin.server-administration.index')

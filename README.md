@@ -3,10 +3,10 @@
 🌟 **If you find this project useful, please consider giving it a star!** 🌟
 
 </div>
-<p align="center"><img align="center" src="https://github.com/hammermaps/OGameX-AI-Players/assets/6917405/c81061d5-0310-4574-a91d-1ea155b567c0" alt="OGameX logo" /></p>
+<p align="center"><img align="center" src="https://github.com/lanedirt/OGameX/assets/6917405/c81061d5-0310-4574-a91d-1ea155b567c0" alt="OGameX logo" /></p>
 
 <p align="center">
-<a href="https://main.ogamex.dev">Live demo 🚀</a> • <a href="#installation">Installation 📦</a> • <a href="https://github.com/hammermaps/OGameX-AI-Players/blob/main/CONTRIBUTING.md">Contributing 💻</a>
+<a href="https://main.ogamex.dev">Live demo 🚀</a> • <a href="#installation">Installation 📦</a> • <a href="https://github.com/lanedirt/OGameX/blob/main/CONTRIBUTING.md">Contributing 💻</a>
 </p>
 
 
@@ -16,23 +16,23 @@
 
 <div align="center">
 
-[<img src="https://img.shields.io/github/v/release/hammermaps/OGameX-AI-Players?include_prereleases&logo=github">](https://github.com/hammermaps/OGameX-AI-Players/releases)
-[<img src="https://img.shields.io/github/actions/workflow/status/hammermaps/OGameX-AI-Players/run-docker-compose-prod.yml?label=docker-compose%20build">](https://github.com/hammermaps/OGameX-AI-Players/actions/workflows/run-docker-compose-prod.yml)
-[<img src="https://img.shields.io/github/actions/workflow/status/hammermaps/OGameX-AI-Players/run-tests-docker-compose.yml?label=tests">](https://github.com/hammermaps/OGameX-AI-Players/actions/workflows/run-tests-docker-compose.yml)
-[<img src="https://img.shields.io/github/actions/workflow/status/hammermaps/OGameX-AI-Players/run-phpstan-code-analysis.yml?label=static%20code%20analysis">](https://github.com/hammermaps/OGameX-AI-Players/actions/workflows/run-phpstan-code-analysis.yml)
-[<img src="https://img.shields.io/github/actions/workflow/status/hammermaps/OGameX-AI-Players/run-laravel-pint-code-style-checker.yml?label=psr-12%20code%20style">](https://github.com/hammermaps/OGameX-AI-Players/actions/workflows/run-laravel-pint-code-style-checker.yml)
+[<img src="https://img.shields.io/github/v/release/lanedirt/OGameX?include_prereleases&logo=github">](https://github.com/lanedirt/OGameX/releases)
+[<img src="https://img.shields.io/github/actions/workflow/status/lanedirt/OGameX/run-docker-compose-prod.yml?label=docker-compose%20build">](https://github.com/lanedirt/OGameX/actions/workflows/run-docker-compose-prod.yml)
+[<img src="https://img.shields.io/github/actions/workflow/status/lanedirt/OGameX/run-tests-docker-compose.yml?label=tests">](https://github.com/lanedirt/OGameX/actions/workflows/run-tests-docker-compose.yml)
+[<img src="https://img.shields.io/github/actions/workflow/status/lanedirt/OGameX/run-phpstan-code-analysis.yml?label=static%20code%20analysis">](https://github.com/lanedirt/OGameX/actions/workflows/run-phpstan-code-analysis.yml)
+[<img src="https://img.shields.io/github/actions/workflow/status/lanedirt/OGameX/run-laravel-pint-code-style-checker.yml?label=psr-12%20code%20style">](https://github.com/lanedirt/OGameX/actions/workflows/run-laravel-pint-code-style-checker.yml)
 
 </div>
 
 <div align="center">
 
-[![good first issues open](https://img.shields.io/github/issues/hammermaps/OGameX-AI-Players/good%20first%20issue.svg?logo=github)](https://github.com/hammermaps/OGameX-AI-Players/issues?q=is%3Aopen+is%3Aissue+label%3A"good+first+issue")
+[![good first issues open](https://img.shields.io/github/issues/lanedirt/OGameX/good%20first%20issue.svg?logo=github)](https://github.com/lanedirt/OGameX/issues?q=is%3Aopen+is%3Aissue+label%3A"good+first+issue")
 [<img alt="Discord" src="https://img.shields.io/discord/1278814992988110922?logo=discord&logoColor=%237289da&label=join%20discord%20chat&color=%237289da">](https://discord.gg/HJ4QRxxB5N)
 
 </div>
 
 
-OGameX is an open-source OGame redesign clone. This clone is built fully from scratch using the Laravel 13.x framework and uses modern PHP practices. All major functionality is covered by unit and feature tests which automatically run on every build.
+OGameX is an open-source OGame redesign clone. This clone is built fully from scratch using the latest Laravel framework version and uses modern PHP practices. All major functionality is covered by unit and feature tests which automatically run on every build.
 
 We welcome any and all contributions to this project! If you want to help out, please read the [contributing](#contributing) section. If you have any questions you can [join the OGameX discord](https://discord.com/invite/HJ4QRxxB5N) to get in touch with the maintainers and other contributors.
 
@@ -40,7 +40,7 @@ Disclaimer: this project is purely fan-based and does not contain any commercial
 
 ## 🖥️ Live demo
 - Main branch (nightly builds): [https://main.ogamex.dev](https://main.ogamex.dev)
-- Latest stable release **(0.13.1)**: [https://release.ogamex.dev](https://release.ogamex.dev)
+- Latest stable release **(0.14.0)**: [https://release.ogamex.dev](https://release.ogamex.dev)
 
 ## 📝 Table of Contents
 - [1. Example screenshots](#screenshots)
@@ -89,15 +89,16 @@ OGameX is under active development with a lot of core features already implement
 - Moon
   - Moon creation through debris field after battle
   - Moon buildings, phalanx, jump gate
+- Wreck fields / Space Dock
+- Character classes
+- In-game chat
+- Buddies / notes / fleet templates
 - Admin panel
-  - Server administration (multi-account detection, bot suspect detection, ban/unban with audit trail)
-  - AI Players management UI (`/admin/ai-players`)
 - Expedition mission with various outcomes
-- Basic dark matter features (non-commercial)
+- Basic dark matter features (non-commercial), including merchant and planet relocate
 - Alliances
 - ACS fleet dispatch missions
-- Multi-language (English, Italian, Dutch, German)
-- AI Players: automated bot players with 6 strategy profiles (Miner, Raider, Neutral, Aggressive, Defensive, Turtle), background daemon and Docker integration
+- Multi-language
 
 ### <a name="upcoming-features"></a> Upcoming Features
 
@@ -114,9 +115,9 @@ Contributions are warmly welcomed, whether in development, testing, or spreading
 
 A good starting point are issues labeled as "good first issue".
 
-[![good first issues open](https://img.shields.io/github/issues/hammermaps/OGameX-AI-Players/good%20first%20issue.svg?logo=github)](https://github.com/hammermaps/OGameX-AI-Players/issues?q=is%3Aopen+is%3Aissue+label%3A"good+first+issue")
+[![good first issues open](https://img.shields.io/github/issues/lanedirt/OGameX/good%20first%20issue.svg?logo=github)](https://github.com/lanedirt/OGameX/issues?q=is%3Aopen+is%3Aissue+label%3A"good+first+issue")
 
-Read the [CONTRIBUTING.md](https://github.com/hammermaps/OGameX-AI-Players/blob/main/CONTRIBUTING.md) file for more information.
+Read the [CONTRIBUTING.md](https://github.com/lanedirt/OGameX/blob/main/CONTRIBUTING.md) file for more information.
 
 ## <a name="disclaimer"></a> 📓 6. Disclaimer
 
@@ -125,7 +126,7 @@ This project is a non-commercial hobby project. All rights and concepts related 
 ## <a name="installation"></a> 🖥️ 7. Installation
 The recommended way to install OGameX is by running the bundled Docker containers. This takes care of all the dependencies and is the easiest way to get started.
 
-If you instead wish to install OGameX manually, see the list of requirements for Laravel 13.x and how to deploy manually to a server here: https://laravel.com/docs/13.x/deployment.
+If you instead wish to install OGameX manually, note that OGameX requires PHP ^8.5. See the list of requirements for Laravel 13.x and how to deploy manually to a server here: https://laravel.com/docs/13.x/deployment.
 
 ### <a name="development"></a> a) Install for local development
 For local development use the default docker-compose file that is included in this repository. This configuration is optimized for development and includes several tools that are useful for debugging and testing.
@@ -134,8 +135,8 @@ Please note that performance of the development mode is slow on Windows (compare
 
 1. Clone the repository.
   ```
-  $ git clone https://github.com/hammermaps/OGameX-AI-Players.git
-  $ cd OGameX-AI-Players
+  $ git clone https://github.com/lanedirt/OGameX.git
+  $ cd OGameX
   ```
 
 2. Launch the project using Docker Compose:
@@ -162,8 +163,8 @@ The instructions below are for Linux. OGameX should also work under Docker for W
 
 1. Clone the git repo.
   ```
-  $ git clone https://github.com/hammermaps/OGameX-AI-Players.git
-  $ cd OGameX-AI-Players
+  $ git clone https://github.com/lanedirt/OGameX.git
+  $ cd OGameX
   ```
 
 2. Copy `.env.example-prod` to `.env`.
@@ -176,7 +177,7 @@ The instructions below are for Linux. OGameX should also work under Docker for W
   $ docker compose -f docker-compose.prod.yml up -d --build --force-recreate
   ```
 
-  > The default setup binds to ports 80/443, to change it modify `docker-compose.yml`. PhpMyAdmin is also included for database management and is bound to port 8080, however to access it you need to explicitly specify your IP addresses via `./docker/phpmyadmin/.htaccess` for safety purposes.
+  > The default setup binds to ports 80/443, to change it modify `docker-compose.prod.yml`. PhpMyAdmin is also included for database management and is bound to port 8080, however to access it you need to explicitly specify your IP addresses via `./docker/phpmyadmin/.htaccess` for safety purposes.
 
 **Important:** it can take up to 10 minutes for the `ogamex-app` container to start, this is because of composer initialization and Rust compiling that happens on the first run. Please be patient and wait for all containers to have fully started.
 
@@ -192,8 +193,14 @@ Create a new account to start using OGameX. The first account created will be au
 If you want to upgrade an existing installation of OGameX to a new version, follow these steps:
 
 1. Stop the existing containers:
+
+  **For development:**
   ```
   $ docker compose down
+  ```
+  **For production:**
+  ```
+  $ docker compose -f docker-compose.prod.yml down
   ```
   2. Pull the latest changes from the main branch or checkout the new release tag:
   ```
@@ -201,7 +208,7 @@ If you want to upgrade an existing installation of OGameX to a new version, foll
   ```
   -- or --
   ```
-  $ git checkout 0.13.0 # replace with the latest release tag
+  $ git checkout 0.14.0 # replace with the latest release tag
   ```
   3. Rebuild and start the containers:
 
@@ -216,14 +223,15 @@ If you want to upgrade an existing installation of OGameX to a new version, foll
   > When the docker containers are started, the entrypoint script in `./docker/entrypoint.sh` will automatically run the appropriate laravel install commands to upgrade the database schema and refresh the cache. Note that depending on the migrations this might take a short while. After the containers are started, you can visit the application at `https://localhost` (or http://localhost) to check if the upgrade was successful. If you run into any issues, please check the logs for more information or open an issue on GitHub.
 
 ### Assigning admin role
-By default, the first registered user is assigned the admin role which can see the admin bar and is able to change server settings. You can also assign the admin role manually via the command line:
+By default, the first registered user is assigned the admin role which can see the admin bar and is able to change server settings. You can also assign the admin role manually via the command line (run inside the `ogamex-app` container; see the development note above for `docker compose exec`):
   ```
-  $ php artisan ogamex:admin:assign-role {username}
+  $ docker compose exec ogamex-app php artisan ogamex:admin:assign-role {username}
   ```
   To remove the admin role from a user, use the following command:
   ```
-  $ php artisan ogamex:admin:remove-role {username}
+  $ docker compose exec ogamex-app php artisan ogamex:admin:remove-role {username}
   ```
+  For production, add `-f docker-compose.prod.yml` to the `docker compose` commands above.
 
 ## <a name="support"></a> 📞 9. Support
 
@@ -270,4 +278,4 @@ The following projects either host OGameX servers or are based on the OGameX cor
 | OGameX Combat Simulator | High-performance OGame combat simulator based on the OGameX Rust battle engine. Features a blazing fast Rust-powered WASM engine (~200x faster than PHP), client-side calculations that work offline, and accurate battle simulations based on OGameX formulas. | [GitHub](https://github.com/rbardtke/OgameX-Combat-Simulator) | Open Source (MIT) |
 | Space Rivals | Built on top of the OGameX core with many different customizations and features. | https://space-rivals.net | Not Open Source |
 
-Do you want your own OGameX-related project to be listed here? Create an issue in the [GitHub issues page](https://github.com/hammermaps/OGameX-AI-Players/issues) and provide details about your project.
+Do you want your own OGameX-related project to be listed here? Create an issue in the [GitHub issues page](https://github.com/lanedirt/OGameX/issues) and provide details about your project.

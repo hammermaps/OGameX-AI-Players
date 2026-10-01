@@ -2,9 +2,9 @@
 
 namespace OGame\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -40,7 +40,10 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property int|null $planet_current
+ * @property int|null $alliance_id
+ * @property Carbon|null $alliance_left_at
  * @property int $dark_matter
+ * @property int $tactical_retreat_ratio
  * @property Carbon|null $dark_matter_last_regen
  * @property bool $vacation_mode
  * @property Carbon|null $vacation_mode_activated_at
@@ -48,9 +51,6 @@ use Spatie\Permission\Traits\HasRoles;
  * @property int|null $character_class
  * @property bool $character_class_free_used
  * @property Carbon|null $character_class_changed_at
- * @property bool $is_ai_player
- * @property bool $universe_gate_enabled
- * @property int|null $universe_gate_cooldown_until
  * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
  * @property-read int|null $notifications_count
  * @property-read UserTech|null $tech
@@ -86,7 +86,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @mixin \Eloquent
  */
 #[Fillable([
-    'username', 'email', 'password', 'lang', 'espionage_probes_amount', 'universe_gate_enabled',
+    'username', 'email', 'password', 'lang', 'espionage_probes_amount',
 ])]
 #[Hidden([
     'password',
@@ -129,23 +129,6 @@ class User extends Authenticatable
             }
         });
     }
-
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'vacation_mode' => 'boolean',
-        'vacation_mode_activated_at' => 'datetime',
-        'vacation_mode_until' => 'datetime',
-        'dark_matter_last_regen' => 'datetime',
-        'character_class_free_used' => 'boolean',
-        'character_class_changed_at' => 'datetime',
-        'alliance_left_at' => 'datetime',
-        'is_ai_player' => 'boolean',
-        'universe_gate_enabled' => 'boolean',
-    ];
 
     /**
      * Get the user tech record associated with the user.
@@ -272,16 +255,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the AI player record for this user (if applicable).
-     *
-     * @return HasOne
-     */
-    public function aiPlayer(): HasOne
-    {
-        return $this->hasOne(AiPlayer::class);
-    }
-
-    /**
      * Returns the current active ban, or null if the user is not banned.
      *
      * @return Ban|null
@@ -329,5 +302,23 @@ class User extends Authenticatable
     public function canBeImpersonated(): bool
     {
         return true;
+    }
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'vacation_mode' => 'boolean',
+            'vacation_mode_activated_at' => 'datetime',
+            'vacation_mode_until' => 'datetime',
+            'dark_matter_last_regen' => 'datetime',
+            'character_class_free_used' => 'boolean',
+            'character_class_changed_at' => 'datetime',
+            'alliance_left_at' => 'datetime',
+        ];
     }
 }

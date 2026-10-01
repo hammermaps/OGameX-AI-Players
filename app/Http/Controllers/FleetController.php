@@ -11,6 +11,7 @@ use OGame\Factories\GameMissionFactory;
 use OGame\Factories\PlanetServiceFactory;
 use OGame\GameConstants\UniverseConstants;
 use OGame\GameMessages\FleetUnionInvite as FleetUnionInviteMessage;
+use OGame\GameMissions\BattleEngine\Services\TacticalRetreatService;
 use OGame\GameObjects\Models\Units\UnitCollection;
 use OGame\Models\Enums\PlanetType;
 use OGame\Models\FleetMission;
@@ -19,7 +20,6 @@ use OGame\Models\FleetUnion;
 use OGame\Models\FleetUnionInvite;
 use OGame\Models\Planet\Coordinate;
 use OGame\Models\Resources;
-use OGame\Models\UniverseGateServer;
 use OGame\Models\User;
 use OGame\Services\CharacterClassService;
 use OGame\Services\CoordinateDistanceCalculator;
@@ -30,7 +30,6 @@ use OGame\Services\ObjectService;
 use OGame\Services\PlanetService;
 use OGame\Services\PlayerService;
 use OGame\Services\SettingsService;
-use OGame\Services\UniverseGateService;
 use OGame\ViewModels\FleetEventRowViewModel;
 use OGame\ViewModels\UnitViewModel;
 
@@ -45,7 +44,7 @@ class FleetController extends OGameController
      * @return View
      * @throws Exception
      */
-    public function index(Request $request, PlayerService $player, SettingsService $settings, FleetUnionService $fleetUnionService, UniverseGateService $universeGateService): View
+    public function index(Request $request, PlayerService $player, SettingsService $settings, FleetUnionService $fleetUnionService): View
     {
         // Define ship ids to include in the fleet screen.
         // 0 = military ships
@@ -88,17 +87,25 @@ class FleetController extends OGameController
         // Get active fleet unions this player can join (buddy/ally of creator, not full, not expired)
         $availableUnions = $this->getAvailableUnionsForPlayer($player, $fleetUnionService);
 
+        $tacticalRetreatService = new TacticalRetreatService();
+        $fleeableUnits = $tacticalRetreatService->extractFleeingUnits($planet->getShipUnits());
+        $tacticalRetreatDeuteriumCost = $tacticalRetreatService->calculateFleeDeuteriumCost($planet, $fleeableUnits);
+        $tacticalRetreatRatio = (int)($player->getUser()->tactical_retreat_ratio ?? 5);
+        if ($tacticalRetreatRatio === 3 && !$player->hasAdmiral()) {
+            $tacticalRetreatRatio = 5;
+        }
+
         return view('ingame.fleet.index')->with([
             'player' => $player,
             'planet' => $planet,
             'units' => $units,
             'objects' => ObjectService::getShipObjects(),
             'shipAmount' => $planet->getFlightShipAmount(),
-            'galaxy' => $request->get('galaxy'),
-            'system' => $request->get('system'),
-            'position' => $request->get('position'),
-            'type' => $request->get('type'),
-            'mission' => $request->get('mission'),
+            'galaxy' => $request->input('galaxy'),
+            'system' => $request->input('system'),
+            'position' => $request->input('position'),
+            'type' => $request->input('type'),
+            'mission' => $request->input('mission'),
             'settings' => $settings,
             'fleetSlotsInUse' => $player->getFleetSlotsInUse(),
             'fleetSlotsMax' => $player->getFleetSlotsMax(),
@@ -106,8 +113,9 @@ class FleetController extends OGameController
             'expeditionSlotsMax' => $player->getExpeditionSlotsMax(),
             'fleetSpeedIncrement' => $fleetSpeedIncrement,
             'availableUnions' => $availableUnions,
-            'universeGateEnabled' => $universeGateService->isEnabled() && $universeGateService->isPlayerOptedIn($player),
-            'universeGateServers' => $universeGateService->activeServers(),
+            'tacticalRetreatRatio' => $tacticalRetreatRatio,
+            'tacticalRetreatDeuteriumCost' => $tacticalRetreatDeuteriumCost,
+            'hasAdmiral' => $player->hasAdmiral(),
         ]);
     }
 
@@ -144,7 +152,7 @@ class FleetController extends OGameController
             if ($eventRowViewModel->is_return_trip) {
                 // Origin becomes destination (where fleet is coming from)
                 $eventRowViewModel->origin_planet_name = '';
-                $eventRowViewModel->origin_planet_coords = new Coordinate($row->galaxy_to, $row->system_to, $row->position_to);
+                $eventRowViewModel->origin_planet_coords = new Coordinate((int) $row->galaxy_to, (int) $row->system_to, (int) $row->position_to);
                 $eventRowViewModel->origin_planet_type = PlanetType::from($row->type_to);
                 if ($row->planet_id_to !== null) {
                     $planetToService = $planetServiceFactory->make($row->planet_id_to);
@@ -158,7 +166,7 @@ class FleetController extends OGameController
 
                 // Destination becomes origin (where fleet is going back to)
                 $eventRowViewModel->destination_planet_name = '';
-                $eventRowViewModel->destination_planet_coords = new Coordinate($row->galaxy_from, $row->system_from, $row->position_from);
+                $eventRowViewModel->destination_planet_coords = new Coordinate((int) $row->galaxy_from, (int) $row->system_from, (int) $row->position_from);
                 $eventRowViewModel->destination_planet_type = PlanetType::from($row->type_from);
                 if ($row->planet_id_from !== null) {
                     $planetFromService = $planetServiceFactory->make($row->planet_id_from);
@@ -172,7 +180,7 @@ class FleetController extends OGameController
             } else {
                 // Normal trip - origin is where fleet started, destination is where it's going
                 $eventRowViewModel->origin_planet_name = '';
-                $eventRowViewModel->origin_planet_coords = new Coordinate($row->galaxy_from, $row->system_from, $row->position_from);
+                $eventRowViewModel->origin_planet_coords = new Coordinate((int) $row->galaxy_from, (int) $row->system_from, (int) $row->position_from);
                 $eventRowViewModel->origin_planet_type = PlanetType::from($row->type_from);
                 if ($row->planet_id_from !== null) {
                     $planetFromService = $planetServiceFactory->make($row->planet_id_from);
@@ -185,7 +193,7 @@ class FleetController extends OGameController
                 }
 
                 $eventRowViewModel->destination_planet_name = '';
-                $eventRowViewModel->destination_planet_coords = new Coordinate($row->galaxy_to, $row->system_to, $row->position_to);
+                $eventRowViewModel->destination_planet_coords = new Coordinate((int) $row->galaxy_to, (int) $row->system_to, (int) $row->position_to);
                 $eventRowViewModel->destination_planet_type = PlanetType::from($row->type_to);
 
                 if ($row->planet_id_to !== null) {
@@ -288,7 +296,7 @@ class FleetController extends OGameController
      * @return JsonResponse
      * @throws Exception
      */
-    public function dispatchCheckTarget(PlayerService $currentPlayer, PlanetServiceFactory $planetServiceFactory, CoordinateDistanceCalculator $coordinateDistanceCalculator, SettingsService $settingsService, FleetMissionService $fleetMissionService, FleetUnionService $fleetUnionService, CharacterClassService $characterClassService, UniverseGateService $universeGateService): JsonResponse
+    public function dispatchCheckTarget(PlayerService $currentPlayer, PlanetServiceFactory $planetServiceFactory, CoordinateDistanceCalculator $coordinateDistanceCalculator, SettingsService $settingsService, FleetMissionService $fleetMissionService, FleetUnionService $fleetUnionService, CharacterClassService $characterClassService): JsonResponse
     {
         $currentPlanet = $currentPlayer->planets->current();
 
@@ -313,7 +321,6 @@ class FleetController extends OGameController
         $system = (int)request()->input('system');
         $position = (int)request()->input('position');
         $targetType = (int)request()->input('type');
-        $targetUniverseId = (int)request()->input('target_universe_id', 0);
 
         // Validate coordinates against universe bounds
         $coordinateError = $this->validateCoordinates($galaxy, $system, $position, $settingsService->numberOfGalaxies());
@@ -326,76 +333,24 @@ class FleetController extends OGameController
 
         $planetType = PlanetType::from($targetType);
 
-        if ($targetUniverseId > 0) {
-            $targetServer = UniverseGateServer::active()->find($targetUniverseId);
-            $units = $this->getUnitsFromRequest($currentPlanet);
-            $errors = [];
-            $enabledMissions = [];
-
-            try {
-                if ($targetServer === null) {
-                    throw new Exception(__('The selected target universe is not available.'));
-                }
-                $universeGateService->assertCanUseGate($currentPlayer, $currentPlanet, $targetServer, $units);
-                if (in_array($planetType, [PlanetType::Planet, PlanetType::Moon], true)) {
-                    $enabledMissions[] = 1;
-                }
-            } catch (Exception $e) {
-                $errors[] = ['message' => $e->getMessage(), 'error' => 140020];
-            }
-
-            return response()->json([
-                'shipsData' => $shipsData,
-                'status' => count($errors) === 0 ? 'success' : 'failure',
-                'errors' => $errors,
-                'additionalFlightSpeedinfo' => __('Universe Gate target: :name', ['name' => $targetServer?->name ?? '']),
-                'targetInhabited' => true,
-                'targetIsStrong' => false,
-                'targetIsOutlaw' => false,
-                'targetIsBuddyOrAllyMember' => false,
-                'targetPlayerId' => 99999,
-                'targetPlayerName' => $targetServer?->name ?? __('Remote universe'),
-                'targetPlayerColorClass' => 'active',
-                'targetPlayerRankIcon' => '',
-                'playerIsOutlaw' => false,
-                'targetPlanet' => [
-                    'galaxy' => $galaxy,
-                    'system' => $system,
-                    'position' => $position,
-                    'type' => $targetType,
-                    'name' => __('Remote universe target'),
-                ],
-                'emptySystems' => 0,
-                'inactiveSystems' => 0,
-                'bashingSystemLimitReached' => false,
-                'targetOk' => count($errors) === 0,
-                'components' => [],
-                'newAjaxToken' => csrf_token(),
-                'orders' => [
-                    1 => in_array(1, $enabledMissions, true),
-                    2 => false,
-                    3 => false,
-                    4 => false,
-                    5 => false,
-                    6 => false,
-                    7 => false,
-                    8 => false,
-                    9 => false,
-                    15 => false,
-                ],
-            ]);
-        }
-
         // Load the target planet
         $targetCoordinates = new Coordinate($galaxy, $system, $position);
         $targetPlanet = $planetServiceFactory->makeForCoordinate($targetCoordinates, true, $planetType);
         $targetInhabited = true;
-        if ($targetPlanet !== null) {
+        if ($targetPlanet !== null && $targetPlanet->isDestroyed()) {
+            // Destroyed bodies show as "space" for manual fleet dispatch (no galaxy click-actions).
+            $targetPlayerId = 99999;
+            $targetPlanetName = $targetPlanet->isMoon()
+                ? $targetPlanet->getPlanetName()
+                : __('t_galaxy.planet.destroyed');
+            $targetPlayerName = 'Deep space';
+            $targetCoordinates = $targetPlanet->getPlanetCoordinates();
+        } elseif ($targetPlanet !== null) {
             $targetPlayer = $targetPlanet->getPlayer();
 
-            $targetPlayerId = $targetPlayer->getId();
+            $targetPlayerId = $targetPlayer?->getId() ?? 99999;
             $targetPlanetName = $targetPlanet->getPlanetName();
-            $targetPlayerName = $targetPlayer->getUsername(false);
+            $targetPlayerName = $targetPlayer?->getUsername(false) ?? 'Deep space';
             $targetCoordinates = $targetPlanet->getPlanetCoordinates();
         } else {
             $targetPlayerId = 99999;
@@ -514,7 +469,7 @@ class FleetController extends OGameController
      * @return JsonResponse
      * @throws Exception
      */
-    public function dispatchSendFleet(PlayerService $player, FleetMissionService $fleetMissionService, FleetUnionService $fleetUnionService, SettingsService $settingsService, CharacterClassService $characterClassService, UniverseGateService $universeGateService): JsonResponse
+    public function dispatchSendFleet(PlayerService $player, FleetMissionService $fleetMissionService, FleetUnionService $fleetUnionService, SettingsService $settingsService, CharacterClassService $characterClassService): JsonResponse
     {
         $galaxy = (int)request()->input('galaxy');
         $system = (int)request()->input('system');
@@ -559,7 +514,6 @@ class FleetController extends OGameController
 
         // Extract mission type from the request
         $mission_type = (int)request()->input('mission');
-        $targetUniverseId = (int)request()->input('target_universe_id', 0);
 
         if ($settingsService->missionBlockedByAttackBlock($mission_type)) {
             return $this->validationErrorResponse(__('The attack block is active. In that time only friendly fleets can be started.'));
@@ -613,53 +567,6 @@ class FleetController extends OGameController
         $resources = new Resources($metal, $crystal, $deuterium, 0);
         $planetType = PlanetType::from($target_type);
 
-        if ($targetUniverseId > 0) {
-            if ($mission_type !== 1) {
-                return $this->validationErrorResponse(__('Universe Gate currently only supports attack missions.'));
-            }
-
-            $targetServer = UniverseGateServer::active()->find($targetUniverseId);
-            if ($targetServer === null) {
-                return $this->validationErrorResponse(__('The selected target universe is not available.'));
-            }
-
-            try {
-                $mission = $universeGateService->createOutgoingAttack(
-                    $player,
-                    $planet,
-                    $targetServer,
-                    $planetType,
-                    $galaxy,
-                    $system,
-                    $position,
-                    $units,
-                    $resources,
-                    $speed_percent
-                );
-
-                return response()->json([
-                    'success' => true,
-                    'message' => __('Universe Gate attack has been queued for remote dispatch.'),
-                    'universeGateMissionId' => $mission->id,
-                    'components' => [],
-                    'newAjaxToken' => csrf_token(),
-                    'redirectUrl' => route('fleet.index'),
-                ]);
-            } catch (Exception $e) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => [
-                        [
-                            'message' => $e->getMessage(),
-                            'error' => 140020
-                        ]
-                    ],
-                    'components' => [],
-                    'newAjaxToken' => csrf_token(),
-                ]);
-            }
-        }
-
         // Check if this fleet should join an existing union and pre-validate timing
         $unionId = (int)request()->input('union');
         $union = null;
@@ -695,7 +602,19 @@ class FleetController extends OGameController
         }
 
         try {
-            $fleetMission = $fleetMissionService->createNewFromPlanet($planet, $target_coordinate, $planetType, $mission_type, $units, $resources, $speed_percent, $holding_hours);
+            $retreatAfterDefenderRetreat = (bool)request()->input('retreatAfterDefenderRetreat');
+            $fleetMission = $fleetMissionService->createNewFromPlanet(
+                $planet,
+                $target_coordinate,
+                $planetType,
+                $mission_type,
+                $units,
+                $resources,
+                $speed_percent,
+                $holding_hours,
+                0,
+                $retreatAfterDefenderRetreat
+            );
 
             // Join the fleet union if requested
             if ($union !== null) {
@@ -1036,7 +955,7 @@ class FleetController extends OGameController
         // Resolve the target planet owner name
         $targetPlayerName = '';
         $planetServiceFactory = app(PlanetServiceFactory::class);
-        $targetCoordinate = new Coordinate($mission->galaxy_to, $mission->system_to, $mission->position_to);
+        $targetCoordinate = new Coordinate((int) $mission->galaxy_to, (int) $mission->system_to, (int) $mission->position_to);
         $targetPlanetService = $planetServiceFactory->makeForCoordinate($targetCoordinate);
         if ($targetPlanetService !== null) {
             $targetPlayer = $targetPlanetService->getPlayer();
@@ -1501,6 +1420,38 @@ class FleetController extends OGameController
         return response()->json([
             'success' => true,
             'message' => 'Template deleted successfully.',
+        ]);
+    }
+
+    /**
+     * Persist the player's tactical retreat preference (Never / 5:1 / 3:1).
+     */
+    public function updateTacticalRetreat(Request $request, PlayerService $player): JsonResponse
+    {
+        $ratio = (int)$request->input('tacticalRetreatState', $request->input('tacticalRetreat', 5));
+
+        if (!in_array($ratio, [0, 3, 5], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid tactical retreat setting.',
+            ], 422);
+        }
+
+        if ($ratio === 3 && !$player->hasAdmiral()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Admiral is required for the 3:1 tactical retreat setting.',
+            ], 422);
+        }
+
+        $user = $player->getUser();
+        $user->tactical_retreat_ratio = $ratio;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'tacticalRetreatRatio' => $ratio,
+            'newAjaxToken' => csrf_token(),
         ]);
     }
 }

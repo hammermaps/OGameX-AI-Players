@@ -2,9 +2,9 @@
 
 namespace OGame\Console\Commands\Dev;
 
+use Exception;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use OGame\Enums\CharacterClass;
@@ -18,6 +18,7 @@ use OGame\Models\UserTech;
 use OGame\Models\WreckField;
 use OGame\Services\ObjectService;
 use OGame\Services\PlanetService;
+use RuntimeException;
 
 #[Description('Seed the database with test users. Recreates users on each run.')]
 #[Signature('ogamex:dev:seed-users
@@ -166,6 +167,9 @@ class PreviewSeedUsers extends Command
     public function handle(): int
     {
         $password = $this->option('password');
+        if (!is_string($password)) {
+            throw new RuntimeException('Password option must be a string.');
+        }
 
         $this->info('Seeding preview environment test users...');
         $this->newLine();
@@ -338,6 +342,9 @@ class PreviewSeedUsers extends Command
         // Apply custom config values (resources, buildings, ships, defense)
         // Get planet model directly from DB since PlanetService has it as private
         $planet = Planet::find($planetService->getPlanetId());
+        if ($planet === null) {
+            throw new RuntimeException('Planet not found.');
+        }
 
         // Only set custom name if provided
         if ($planetName !== null) {
@@ -516,14 +523,7 @@ class PreviewSeedUsers extends Command
                     'deuterium' => rand(1000, 100000),
                 ],
             ],
-            [
-                'key' => 'debris_field_harvest',
-                'params' => fn () => [
-                    'coordinates' => '[coordinates]' . rand(1, 5) . ':' . rand(1, 499) . ':' . rand(1, 15) . '[/coordinates]',
-                    'metal' => rand(10000, 500000),
-                    'crystal' => rand(5000, 250000),
-                ],
-            ],
+            $this->getDebrisFieldHarvestTemplate(),
         ];
 
         $this->createMessages($user, $fleetTemplates, 60);
@@ -549,7 +549,7 @@ class PreviewSeedUsers extends Command
      * @param array<int, array{key: string, params: callable}> $templates
      * @param int $count
      */
-    private function createMessages(User $user, array $templates, int $count): void
+    public function createMessages(User $user, array $templates, int $count): void
     {
         for ($i = 0; $i < $count; $i++) {
             $template = $templates[array_rand($templates)];
@@ -563,6 +563,58 @@ class PreviewSeedUsers extends Command
             $message->created_at = now()->subMinutes(rand(1, 43200));
             $message->save();
         }
+    }
+
+    /**
+     * The debris_field_harvest message template entry used by seedMessages(), exposed so
+     * tests can exercise the exact same template wiring the seed command uses.
+     *
+     * @return array{key: string, params: callable}
+     */
+    public function getDebrisFieldHarvestTemplate(): array
+    {
+        return [
+            'key' => 'debris_field_harvest',
+            'params' => fn () => $this->generateDebrisFieldHarvestParams(),
+        ];
+    }
+
+    /**
+     * Generate randomized params for a debris_field_harvest message, using a real
+     * ship object so ship_name, storage_capacity, and harvested amounts stay consistent
+     * with what RecycleMission/AttackMission would actually produce.
+     *
+     * @return array<string, mixed>
+     */
+    public function generateDebrisFieldHarvestParams(): array
+    {
+        $coordinate = '[coordinates]' . rand(1, 5) . ':' . rand(1, 499) . ':' . rand(1, 15) . '[/coordinates]';
+        $metal = rand(10000, 500000);
+        $crystal = rand(5000, 250000);
+        $deuterium = rand(0, 100000);
+
+        $machineNames = ['recycler', 'reaper', 'pathfinder'];
+        $ship = ObjectService::getShipObjectByMachineName($machineNames[array_rand($machineNames)]);
+        $shipAmount = rand(1, 20);
+        $storageCapacity = $shipAmount * $ship->properties->capacity->rawValue;
+
+        $harvestedMetal = min($metal, rand(0, $storageCapacity));
+        $harvestedCrystal = min($crystal, rand(0, max(0, $storageCapacity - $harvestedMetal)));
+        $harvestedDeuterium = min($deuterium, rand(0, max(0, $storageCapacity - $harvestedMetal - $harvestedCrystal)));
+
+        return [
+            'to' => str_replace(['[coordinates]', '[/coordinates]'], ['[debrisfield]', '[/debrisfield]'], $coordinate),
+            'coordinates' => $coordinate,
+            'ship_name' => $ship->title,
+            'ship_amount' => $shipAmount,
+            'storage_capacity' => $storageCapacity,
+            'metal' => $metal,
+            'crystal' => $crystal,
+            'deuterium' => $deuterium,
+            'harvested_metal' => $harvestedMetal,
+            'harvested_crystal' => $harvestedCrystal,
+            'harvested_deuterium' => $harvestedDeuterium,
+        ];
     }
 
     /**

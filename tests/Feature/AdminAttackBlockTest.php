@@ -3,12 +3,12 @@
 namespace Tests\Feature;
 
 use OGame\Services\SettingsService;
-use Tests\AccountTestCase;
+use Tests\IsolatedAccountTestCase;
 
 /**
  * Test that the admin attack block save/clear endpoint works as expected.
  */
-class AdminAttackBlockTest extends AccountTestCase
+class AdminAttackBlockTest extends IsolatedAccountTestCase
 {
     /**
      * Assign admin role before each test so the route is accessible.
@@ -16,7 +16,11 @@ class AdminAttackBlockTest extends AccountTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->artisan('ogamex:admin:assign-role', ['username' => auth()->user()->username]);
+        $user = auth()->user();
+        if ($user === null) {
+            $this->fail('No authenticated user found.');
+        }
+        $this->artisan('ogamex:admin:assign-role', ['username' => $user->username]);
     }
 
     /**

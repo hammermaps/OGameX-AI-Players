@@ -97,6 +97,10 @@ class PlayerService
     {
         // Fetch user from model
         $user = User::with('highscore')->where('id', $id)->first();
+        if ($user === null) {
+            throw new RuntimeException('User not found.');
+        }
+
         $this->user = $user;
 
         // Fetch user tech from model
@@ -153,6 +157,21 @@ class PlayerService
     public function getUser(): User
     {
         return $this->user;
+    }
+
+    /**
+     * Reload the user model from the database.
+     *
+     * @return void
+     */
+    public function refreshUser(): void
+    {
+        $user = User::where('id', $this->user->id)->first();
+        if ($user === null) {
+            throw new RuntimeException('User not found.');
+        }
+
+        $this->user = $user;
     }
 
     /**
@@ -372,7 +391,7 @@ class PlayerService
      */
     public function validatePassword(string $password): bool
     {
-        if (Auth::Attempt((['email' => $this->getEmail(), 'password' => $password]))) {
+        if (Auth::attempt(['email' => $this->getEmail(), 'password' => $password])) {
             return true;
         }
 
@@ -481,7 +500,12 @@ class PlayerService
     {
         if (!$this->user->planet_current) {
             // If no current planet is set, return the first planet of the player.
-            return $this->planets->first()->getPlanetId();
+            $firstPlanet = $this->planets->first();
+            if ($firstPlanet === null) {
+                throw new RuntimeException('Player has no planets.');
+            }
+
+            return $firstPlanet->getPlanetId();
         }
 
         return $this->user->planet_current;
@@ -878,17 +902,19 @@ class PlayerService
      */
     public function delete(): void
     {
-        // Loop through all planets and delete all records associated with them.
-        foreach ($this->planets->all() as $planet) {
+        // Include destroyed planets still awaiting purge so related rows are cleaned up.
+        $planetIds = Planet::where('user_id', $this->getId())->pluck('id');
+
+        foreach ($planetIds as $planetId) {
             // Delete all queue items.
-            ResearchQueue::where('planet_id', $planet->getPlanetId())->delete();
-            BuildingQueue::where('planet_id', $planet->getPlanetId())->delete();
-            UnitQueue::where('planet_id', $planet->getPlanetId())->delete();
+            ResearchQueue::where('planet_id', $planetId)->delete();
+            BuildingQueue::where('planet_id', $planetId)->delete();
+            UnitQueue::where('planet_id', $planetId)->delete();
             // Delete all fleet missions.
             // Get all fleet missions for this planet then loop through them and delete them.
             // TODO: this might be a performance bottleneck if there are many missions. Consider using a bulk delete compatible
             // with the foreign key constraints instead.
-            $missions = FleetMission::where('planet_id_from', $planet->getPlanetId())->orWhere('planet_id_to', $planet->getPlanetId())->get();
+            $missions = FleetMission::where('planet_id_from', $planetId)->orWhere('planet_id_to', $planetId)->get();
             foreach ($missions as $mission) {
                 // Delete any that have this mission as their parent.
                 FleetMission::where('parent_id', $mission->id)->delete();

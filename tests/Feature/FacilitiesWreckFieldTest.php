@@ -4,9 +4,9 @@ namespace Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use OGame\Models\WreckField;
-use Tests\AccountTestCase;
+use Tests\IsolatedAccountTestCase;
 
-class FacilitiesWreckFieldTest extends AccountTestCase
+class FacilitiesWreckFieldTest extends IsolatedAccountTestCase
 {
     protected function tearDown(): void
     {
@@ -87,6 +87,9 @@ class FacilitiesWreckFieldTest extends AccountTestCase
             ->where('system', $coords->system)
             ->where('planet', $coords->position)
             ->first();
+        if ($wreckField === null) {
+            $this->fail('Wreck field not found.');
+        }
 
         $this->assertEquals('repairing', $wreckField->status);
         $this->assertNotNull($wreckField->repair_started_at);
@@ -229,6 +232,9 @@ class FacilitiesWreckFieldTest extends AccountTestCase
             ->where('system', $coords->system)
             ->where('planet', $coords->position)
             ->first();
+        if ($wreckField === null) {
+            $this->fail('Wreck field not found.');
+        }
 
         $this->assertEquals('burned', $wreckField->status);
     }

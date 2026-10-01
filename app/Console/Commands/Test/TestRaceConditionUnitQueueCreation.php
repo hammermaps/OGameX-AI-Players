@@ -2,15 +2,14 @@
 
 namespace OGame\Console\Commands\Test;
 
-use Illuminate\Console\Attributes\Description;
-use Illuminate\Console\Attributes\Signature;
 use DateTime;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Promise\Utils;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Validation\ValidationException;
-use OGame\Models\Resources;
 use OGame\Models\UnitQueue;
 use OGame\Services\ObjectService;
 

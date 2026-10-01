@@ -2,19 +2,16 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use OGame\Models\Planet;
 use OGame\Models\Resources;
 use OGame\Services\ObjectService;
-use Tests\AccountTestCase;
+use Tests\IsolatedAccountTestCase;
 
 /**
  * Test that planet field restrictions work correctly for buildings.
  */
-class PlanetFieldRestrictionTest extends AccountTestCase
+class PlanetFieldRestrictionTest extends IsolatedAccountTestCase
 {
-    use DatabaseTransactions;
-
     /**
      * Test that a building cannot be built when planet fields are full.
      *
@@ -24,6 +21,9 @@ class PlanetFieldRestrictionTest extends AccountTestCase
     {
         // Set the planet to have very few fields and fill them up
         $planetModel = Planet::where('id', $this->planetService->getPlanetId())->first();
+        if ($planetModel === null) {
+            $this->fail('Planet model not found.');
+        }
         $planetModel->field_max = 5;
         $planetModel->save();
 
@@ -66,6 +66,9 @@ class PlanetFieldRestrictionTest extends AccountTestCase
     {
         // Set the planet to have 10 fields
         $planetModel = Planet::where('id', $this->planetService->getPlanetId())->first();
+        if ($planetModel === null) {
+            $this->fail('Planet model not found.');
+        }
         $planetModel->field_max = 10;
         $planetModel->save();
 
@@ -111,6 +114,9 @@ class PlanetFieldRestrictionTest extends AccountTestCase
     {
         // Set the planet to have 6 fields total
         $planetModel = Planet::where('id', $this->planetService->getPlanetId())->first();
+        if ($planetModel === null) {
+            $this->fail('Planet model not found.');
+        }
         $planetModel->field_max = 6;
         $planetModel->save();
 
@@ -157,6 +163,9 @@ class PlanetFieldRestrictionTest extends AccountTestCase
     {
         // Set the planet to have very few fields and fill them up
         $planetModel = Planet::where('id', $this->planetService->getPlanetId())->first();
+        if ($planetModel === null) {
+            $this->fail('Planet model not found.');
+        }
         $planetModel->field_max = 5;
         $planetModel->save();
 
@@ -192,6 +201,9 @@ class PlanetFieldRestrictionTest extends AccountTestCase
     {
         // Set the planet to have 5 base fields
         $planetModel = Planet::where('id', $this->planetService->getPlanetId())->first();
+        if ($planetModel === null) {
+            $this->fail('Planet model not found.');
+        }
         $planetModel->field_max = 5;
         $planetModel->terraformer = 0;
         $planetModel->save();
@@ -243,6 +255,9 @@ class PlanetFieldRestrictionTest extends AccountTestCase
     {
         // Set the planet to have 5 fields
         $planetModel = Planet::where('id', $this->planetService->getPlanetId())->first();
+        if ($planetModel === null) {
+            $this->fail('Planet model not found.');
+        }
         $planetModel->field_max = 5;
         $planetModel->save();
 
@@ -292,6 +307,9 @@ class PlanetFieldRestrictionTest extends AccountTestCase
     {
         // Set the planet to have 5 fields total
         $planetModel = Planet::where('id', $this->planetService->getPlanetId())->first();
+        if ($planetModel === null) {
+            $this->fail('Planet model not found.');
+        }
         $planetModel->field_max = 5;
         $planetModel->save();
 
